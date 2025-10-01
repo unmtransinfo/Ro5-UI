@@ -5,7 +5,69 @@ import './App.css';
 
 import {useState} from "react"
 import { api } from "./lib/api";
-import type { Ro5Item, Ro5Summary } from "./types";
+import type { Ro5Item, Ro5Summary, Hist, Box, DownloadPayload } from "./types";
+
+
+//helper function for box/histogram
+function MiniHist({ hist }: { hist: Hist }) {
+  const max = Math.max(1, ...hist.counts);
+
+
+  return (
+    <div style={{ display: "flex", gap: 2, height: 60, alignItems: "flex-end", marginTop: 8 }}>
+
+      {hist.counts.map((c, i) => (
+        <div key={i} 
+            title={`${hist.bins[i]}-${hist.bins[i+1]}: ${c}`}
+            //height is c/max*60 because 60 is tallest bar
+            style={{ width: 6, height: `${(c/max)*60}px`, background: "#7aa6ff", borderRadius: 2 }} 
+        />
+      ))}
+
+    </div>
+  );
+}
+
+function MiniBox({ box }: { box: Box }) {
+  if (box.min == null) return null;
+  const W = 260;
+
+  //scale for numbers.
+  const scale = (x:number)=> ((x - (box.min as number)) / ((box.max as number)-(box.min as number))) * W;
+  const q1 = scale(box.q1 as number), q3 = scale(box.q3 as number), med = scale(box.median as number);
+
+
+  return (
+    <div style={{ position:"relative", width: W, height: 28, background:"#eef2ff", borderRadius:4, marginTop:8 }}>
+
+      {/* whiskers */}
+      <div style={{ position:"absolute", left:0, top:13, width:W, height:2, background:"#c7d2fe" }}/>
+      {/* box */}
+      <div style={{ position:"absolute", left:q1, top:6, width: Math.max(2, q3-q1), height:16, background:"#93c5fd", borderRadius:4 }}/>
+      {/* median */}
+      <div style={{ position:"absolute", left:med, top:4, width:2, height:20, background:"#1e3a8a" }}/>
+    
+    </div>
+  );
+}
+
+//for download
+function triggerDownload(d: DownloadPayload) {
+  const bytes = atob(d.content);
+  const arr = new Uint8Array(bytes.length);
+
+  for (let i = 0; i < bytes.length; i++) {
+    arr[i] = bytes.charCodeAt(i);
+  }
+  const blob = new Blob([arr], { type: d.mime || "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = d.filename || "ro5_results.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 
 
 function App() {
@@ -15,6 +77,8 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<Ro5Item[]>([]);
   const [summary, setSummary] = useState<Ro5Summary | null>(null);
+  const [download, setDownload] = useState<DownloadPayload | null>(null);
+  const [note, setNote] = useState<string | null>(null);
 
 
   
@@ -26,6 +90,8 @@ function App() {
     setData([]);
     setSummary(null);
     setLoading(true);
+    setDownload(null);
+    setNote(null);
 
 
     //SENDing
@@ -33,11 +99,17 @@ function App() {
       const smilesArray = smiles.split(",").map(s => s.trim());
       const res = await api.post("/ro5", { smiles: smilesArray, vmax: 1 });
 
-      //setting
+      //setting!!!!!!
       setData(res.data.items);
       setSummary(res.data.summary);
+      setDownload(res.data.download ?? null);
+      setNote(res.data.note ?? null);
     }
     catch (err: any) {
+      if(err?.response?.status === 413) {
+        console.error("Input too large.");
+        setError("Input too large.");
+      }
       console.error("Error details:", err);
       setError(err?.response?.data || err.message);
     }
@@ -120,6 +192,35 @@ function App() {
 
       </div>
     )}
+
+    {summary && (
+      <div style={{ marginTop: 16 }}>
+        {(["mwt","logp","hbd","hba"] as const).map((k) => {
+          const dist = summary.distributions[k];
+          
+          return (
+            <div key={k} style={{ marginBottom: 24 }}>
+
+              <h3 style={{ margin: "12px 0 4px" }}>{k.toUpperCase()} distribution</h3>
+              <MiniHist hist={dist.hist} />
+              <MiniBox box={dist.box} />
+
+            </div>
+          );
+        })}
+      </div>
+    )}
+
+
+    {note && <div style={{ marginTop: 12, color: "#6b7280" }}>{note}</div>}
+    {download && (
+      <button onClick={() => triggerDownload(download)}
+              style={{ marginTop: 8, padding: "8px 12px", borderRadius: 8 }}>
+        Download results (.csv)
+      </button>
+    )}
+
+
 
     </main>
   );

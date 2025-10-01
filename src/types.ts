@@ -13,8 +13,28 @@ export type Ro5Item = {
   logp_violation: boolean;
 };
 
+export type DownloadPayload = { 
+  filename: string; 
+  mime: string; 
+  content: string 
+};
 
 
+export type Hist = { 
+  bins: number[]; 
+  counts: number[];
+};
+export type Box = { 
+  min: number|null;
+  q1: number|null;
+  median: number|null;
+  q3: number|null;
+  max: number|null;
+};
+export type Dist = { 
+  hist: Hist;
+  box: Box;
+};
 
 export type CountPct = { 
   count: number; 
@@ -32,11 +52,10 @@ export type Stat = {
   stdev: number | null; 
 };
 export type Ro5Summary = { 
-  mwt: Stat; 
-  logp: Stat; 
-  hbd: Stat; 
-  hba: Stat; 
+  mwt: Stat; logp: Stat; hbd: Stat; hba: Stat; 
 
   pass_fail: Ro5PassFail;
+
+  distributions: { mwt: Dist; logp: Dist; hbd: Dist; hba: Dist };
 };
 
