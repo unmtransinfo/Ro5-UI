@@ -3,7 +3,7 @@ import React from 'react';
 import './App.css';
 
 
-import {useState} from "react"
+import {useState, useEffect} from "react"
 import { api } from "./lib/api";
 import type { Ro5Item, Ro5Summary, Hist, Box, DownloadPayload } from "./types";
 
@@ -69,6 +69,69 @@ function triggerDownload(d: DownloadPayload) {
 }
 
 
+//help
+function HelpModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div style={{position: "fixed", top: 0,left:0,right: 0,bottom: 0,background: "rgba(0,0,0,0.4)",
+      display: "flex", alignItems: "center", justifyContent: "center"
+    }}>
+      <div style={{
+        background: "white", color: "black", padding: 20, borderRadius: 8, width: 600, maxHeight: "80vh", overflowY: "auto"
+      }}>
+        <h2>Help & About</h2>
+
+        <h3>Theory</h3>
+        <p>
+          The Lipinski Rule of Five (Ro5), proposed by Christopher A. Lipinski in 1997, is a simple guideline
+          for estimating whether a compound is likely to be an orally active drug in humans. It uses four key
+          molecular descriptors:
+        </p>
+        <ul>
+          <li><b>MWT</b> - Molecular Weight (&lt;= 500)</li>
+          <li><b>LogP</b> - Predicted octanol-water partition coefficient (&lt; 5.0)</li>
+          <li><b>HBD</b> - Hydrogen Bond Donors (&lt;= 5)</li>
+          <li><b>HBA</b> - Hydrogen Bond Acceptors (&lt;= 10)</li>
+        </ul>
+        <p>
+          A compound is considered "drug-like" if it violates no more than one of these rules. 
+          In this app, you can adjust the maximum allowed violations (<b>vmax</b>, default = 1).
+        </p>
+        <p>
+          It is generally understood that these criteria do not apply to biologics, nor to transporter mediated targets.
+        </p>
+
+        <h3>How to Use</h3>
+        <ol>
+          <li>Enter one or more SMILES strings (comma separated).</li>
+          <li>Click <b>Compute</b>.</li>
+          <li>View results per compound (if dataset is small), plus overall summary statistics and plots.</li>
+          <li>Download results as CSV for larger datasets.</li>
+        </ol>
+
+        <h3>Input Limits</h3>
+        <ul>
+          <li>&lt; 5,000 compounds - full results + summary shown on page.</li>
+          <li>5,000-9,999 compounds - summary only + CSV download.</li>
+          <li>&gt; 10,000 compounds - request rejected (too large).</li>
+        </ul>
+
+        <h3>Outputs</h3>
+        <ul>
+          <li>Per-compound: descriptors, violations, pass/fail flag.</li>
+          <li>Summary: mean, standard deviation, pass/fail counts.</li>
+          <li>Visuals: histograms and boxplots for MWT, LogP, HBD, HBA.</li>
+          <li>Download: CSV with all compound-level results.</li>
+        </ul>
+
+        <button onClick={onClose} style={{ marginTop: 20, padding: "6px 12px" }}>
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
 
 function App() {
   
@@ -79,6 +142,7 @@ function App() {
   const [summary, setSummary] = useState<Ro5Summary | null>(null);
   const [download, setDownload] = useState<DownloadPayload | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
 
 
   
@@ -120,6 +184,16 @@ function App() {
 
 
   return (
+    <>
+    <header style={{ maxWidth: 760, margin: "16px auto 0", padding: "0 16px" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <button onClick={() => setShowHelp(true)} style={{ padding: "8px 12px", borderRadius: 8 }}>
+          Help
+        </button>
+      </div>
+    </header>
+
+
     <main style={{ maxWidth: 760, margin: " 40px auto", padding: 16}}>
       <h1 style={{ marginBottom: 20 }}>Lipinski Rule of 5</h1>
 
@@ -223,6 +297,10 @@ function App() {
 
 
     </main>
+
+    {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+
+    </>
   );
 }
 
