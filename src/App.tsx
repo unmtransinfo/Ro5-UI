@@ -86,7 +86,7 @@ function HelpModal({ onClose }: { onClose: () => void }) {
           for estimating whether a compound is likely to be an orally active drug in humans. It uses four key
           molecular descriptors:
         </p>
-        <ul>
+        <ul style={{textAlign: "left"}}>
           <li><b>MWT</b> - Molecular Weight (&lt;= 500)</li>
           <li><b>LogP</b> - Predicted octanol-water partition coefficient (&lt; 5.0)</li>
           <li><b>HBD</b> - Hydrogen Bond Donors (&lt;= 5)</li>
@@ -94,14 +94,14 @@ function HelpModal({ onClose }: { onClose: () => void }) {
         </ul>
         <p>
           A compound is considered "drug-like" if it violates no more than one of these rules. 
-          In this app, you can adjust the maximum allowed violations (<b>vmax</b>, default = 1).
+          In this app, you can adjust the allowed violations (<b>vmax</b> default = 1).
         </p>
         <p>
           It is generally understood that these criteria do not apply to biologics, nor to transporter mediated targets.
         </p>
 
         <h3>How to Use</h3>
-        <ol>
+        <ol style={{textAlign: "left"}}>
           <li>Enter one or more SMILES strings (comma separated).</li>
           <li>Click <b>Compute</b>.</li>
           <li>View results per compound (if dataset is small), plus overall summary statistics and plots.</li>
@@ -109,20 +109,23 @@ function HelpModal({ onClose }: { onClose: () => void }) {
         </ol>
 
         <h3>Input Limits</h3>
-        <ul>
+        <ul style={{textAlign: "left"}}>
           <li>&lt; 5,000 compounds - full results + summary shown on page.</li>
           <li>5,000-9,999 compounds - summary only + CSV download.</li>
           <li>&gt; 10,000 compounds - request rejected (too large).</li>
         </ul>
 
         <h3>Outputs</h3>
-        <ul>
+        <ul style={{textAlign: "left"}}>
           <li>Per-compound: descriptors, violations, pass/fail flag.</li>
           <li>Summary: mean, standard deviation, pass/fail counts.</li>
           <li>Visuals: histograms and boxplots for MWT, LogP, HBD, HBA.</li>
           <li>Download: CSV with all compound-level results.</li>
         </ul>
 
+        <h3> Developing this app: </h3>
+        <p>Bat
+        </p>
         <button onClick={onClose} style={{ marginTop: 20, padding: "6px 12px" }}>
           Close
         </button>
@@ -143,9 +146,20 @@ function App() {
   const [download, setDownload] = useState<DownloadPayload | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  //t.2
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
+  const [showAll, setShowAll] = useState(false);
 
+  //for Returning the data in a table
+  const total1 = data.length;
+  const totalPages = Math.ceil(total1 / pageSize);
+  const start1 = (page - 1) * pageSize;
+  const end1 = start1 + pageSize;
+  const visible = showAll ? data : data.slice(start1, end1);
 
   
+
 
   //!!!
   const submit = async(e: React.FormEvent) => {
@@ -168,6 +182,12 @@ function App() {
       setSummary(res.data.summary);
       setDownload(res.data.download ?? null);
       setNote(res.data.note ?? null);
+
+      setPage(1);
+      setShowAll(false);
+
+      
+
     }
     catch (err: any) {
       if(err?.response?.status === 413) {
@@ -217,29 +237,62 @@ function App() {
       {error ? <div style={{ color: "crimson" }}>{error}</div> : null}
 
 
-
       
       {data.length > 0 ? (
-        <div style={{ border: "1px solid #eee", borderRadius: 20, padding: 26 }}>
+        <div style={{ border: "1px solid #eee", borderRadius: 30, padding:25 }}>
           <h2 style={{ marginTop: 0 }}>Results</h2>
-          {data.map((item, i) => (
-            <ul key={i} style={{ lineHeight: 2 }}>
 
-              <li><b>SMILES:</b> {item.smiles}</li>
-              <li><b>MWT:</b> {item.mwt}</li>
-              <li><b>LogP:</b> {item.logp}</li>
-              <li><b>HBD:</b> {item.hbd}</li>
-              <li><b>HBA:</b> {item.hba}</li>
-              <li><b>Violations:</b> {item.violations}</li>
-              <li><b>Passes Ro5:</b> {item.passes_ro5 ? "Yes" : "No"}</li>
-              <li><b>Vmax:</b> {item.vmax}</li>
-              <li><b>MWT violation:</b> {item.mwt_violation? "Yes" : "No"}</li>
-              <li><b>HBD violation:</b> {item.hbd_violation? "Yes" : "No"}</li>
-              <li><b>HBA violation:</b> {item.hba_violation? "Yes" : "No"}</li>
-              <li><b>LOGP violation:</b> {item.logp_violation? "Yes" : "No"}</li>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  {["SMILES","MWT","LogP","HBD","HBA","Violations","Passes","VMAX","MWT_violation","HBD_violation","HBA_violation","LOGP_violation"].map(h => (
+                    <th key={h} style={{ textAlign: "left", padding: "10px", borderBottom: "1px solid #eeeeee73" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
 
-            </ul>
-          ))}
+              <tbody>
+
+              {visible.map((item, i) => (
+                <tr key={`${item.smiles}-${start1+i}`}>
+
+                  <td style={{ padding: "10px", borderBottom: "1px solid #f4f4f4" }}>{item.smiles}</td>
+                  <td style={{ padding: "10px", borderBottom: "1px solid #f4f4f4" }}>{item.mwt}</td>
+                  <td style={{ padding: "10px", borderBottom: "1px solid #f4f4f4" }}>{item.logp}</td>
+                  <td style={{ padding: "10px", borderBottom: "1px solid #f4f4f4" }}>{item.hbd}</td>
+                  <td style={{ padding: "10px", borderBottom: "1px solid #f4f4f4" }}>{item.hba}</td>
+                  <td style={{ padding: "10px", borderBottom: "1px solid #f4f4f4" }}>{item.violations}</td>
+                  <td style={{ padding: "10px", borderBottom: "1px solid #f4f4f4" }}>{item.passes_ro5 ? "Yes" : "No"}</td>
+                  <td style={{ padding: "10px", borderBottom: "1px solid #f4f4f4" }}>{item.vmax}</td>
+                  <td style={{ padding: "10px", borderBottom: "1px solid #f4f4f4" }}>{item.mwt_violation? "Yes" : "No"}</td>
+                  <td style={{ padding: "10px", borderBottom: "1px solid #f4f4f4" }}>{item.hbd_violation? "Yes" : "No"}</td>
+                  <td style={{ padding: "10px", borderBottom: "1px solid #f4f4f4" }}>{item.hba_violation? "Yes" : "No"}</td>
+                  <td style={{ padding: "10px", borderBottom: "1px solid #f4f4f4" }}>{item.logp_violation? "Yes" : "No"}</td>
+
+                </tr>
+              ))}
+
+              </tbody>
+              </table>
+          </div>
+
+          {/* controls */}
+          {!showAll && totalPages > 1 && (
+            <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12 }}>
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Prev</button>
+              <span>Page {page} / {totalPages}</span>
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</button>
+              <button onClick={() => setShowAll(true)} style={{ marginLeft: "auto" }}>Show all</button>
+            </div>
+          )}
+          {showAll && (
+            <div style={{ marginTop: 12 }}>
+              <button onClick={() => { setShowAll(false); setPage(1); }}>Show less</button>
+            </div>
+          )}
+
+
         </div>
       ) : null }
 
