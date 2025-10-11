@@ -136,6 +136,41 @@ function HelpModal({ onClose }: { onClose: () => void }) {
 
 
 
+//parsing for inputting file. see more in the future?
+function parseToSmiles(raw: string): string[] {
+  const t = raw;
+  if (!t) return [];
+
+
+  const maybeCsv = t.includes("\n") && t.includes(",");
+  if (maybeCsv) {
+    const lines = t.split("\n").filter(Boolean);
+    const header = lines[0].split(",").map(s => s.trim().toLowerCase());
+    //assumption there is smiles.
+    let idx = header.indexOf("smiles");
+    //idx maybe make changeable later
+    if (idx === -1) idx = 0;
+
+    const values = lines.slice(1).map(line => {
+      const cols = line.split(",");
+      return (cols[idx] || "").trim();
+    });
+    return values.filter(Boolean);
+  }
+
+  //newline, comma, semicolo, space, tab
+  return t.split(/[\n,; \t]+/).map(s => s.trim()).filter(Boolean);
+}
+
+
+
+
+
+
+
+
+
+
 function App() {
   
   const [smiles, setSmiles] = useState("");
@@ -174,7 +209,10 @@ function App() {
 
     //SENDing
     try {
-      const smilesArray = smiles.split(",").map(s => s.trim());
+      //const smilesArray = smiles.split(",").map(s => s.trim());
+      //newline, comma, semicolon
+      const smilesArray = smiles.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean);
+
       const res = await api.post("/ro5", { smiles: smilesArray, vmax: 1 });
 
       //setting!!!!!!
@@ -219,11 +257,32 @@ function App() {
 
 
       <form onSubmit={submit} style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        <input
+
+        {/* testing the file input and clear!!!  */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+          <input
+            type="file"
+            accept=".csv,.txt"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const text = await file.text();
+              const parsed = parseToSmiles(text);
+              setSmiles(parsed.join("\n"));
+              setPage(1);
+              setShowAll(false);
+            }}
+          />
+          
+        </div>
+
+
+        <textarea
           value={smiles}
           onChange={(e) => setSmiles(e.target.value)}
-          placeholder="Enter SMILES (e.g., CCO)"
-          style={{ flex: 1, padding: 10, borderRadius: 20, border: "1px solid #ccc" }}
+          placeholder="Enter SMILES (need to be seperated by: comma, newline, semicolon)"
+          rows={3}
+          style={{ flex: 1, padding: 8, fontSize:14, borderRadius: 10, border: "1px solid #ccc", resize:"vertical", lineHeight: 1}}
           required/>
         <button
           type="submit"
@@ -231,6 +290,7 @@ function App() {
           style={{ padding: "10px 16px", borderRadius: 8 }}>
           {loading ? "Computing..." : "Compute"}
         </button>
+        <button type="button" onClick={() => setSmiles("")}>Clear</button>
       </form>
 
 
