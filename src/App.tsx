@@ -9,28 +9,73 @@ import type { Ro5Item, Ro5Summary, Hist, Box, DownloadPayload } from "./types";
 
 
 //helper function for box/histogram
-function MiniHist({ hist }: { hist: Hist }) {
+function MiniHist({ hist, title, unit }: { hist: Hist; title:string; unit?:string }) {
+  if(!hist?.counts?.length) return null;
+
+  //W is chart width and H is bar max height, others should make sense
+  const W = 260;
+  const H = 80;
   const max = Math.max(1, ...hist.counts);
+  const bins = hist.bins;
+  const xMin = bins[0];
+  const xMax = bins[bins.length -1]
+  const xMid = bins[Math.floor(bins.length / 2)];
 
 
   return (
-    <div style={{ display: "flex", gap: 2, height: 60, alignItems: "flex-end", marginTop: 8 }}>
+    <div style={{ width: W, marginTop: 10 }}>
+      {/* title */}
+      <div style={{ fontSize: 15, color: "#c6cedbff" }}>{title}</div>
 
-      {hist.counts.map((c, i) => (
-        <div key={i} 
-            title={`${hist.bins[i]}-${hist.bins[i+1]}: ${c}`}
-            //height is c/max*60 because 60 is tallest bar
-            style={{ width: 6, height: `${(c/max)*60}px`, background: "#7aa6ff", borderRadius: 2 }} 
-        />
-      ))}
+      {/* bars */}
+      <div style={{display: "flex",gap: 2,alignItems: "flex-end",height: H, marginTop: 6,
+        background: "#fcf8f8ff"
+      }}>
+        {hist.counts.map((c, i) => (
+          <div key={i} title={`${format1(bins[i])} - ${format1(bins[i+1])}${unit ? " " + unit : ""}: ${c}`}
+            style={{
+              width: Math.max(4, (W - 2 * hist.counts.length) / hist.counts.length),
+              height: `${(c / max) * H}px`,background: "#7aa6ff",borderRadius: 2
+            }}
+          />
+        ))}
+      </div>
+
+
+
+      {/* x-axis */}
+      <div style={{ position: "relative", height: 40, marginTop: 4 }}>
+        <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: 1, background: "#ebe5e5ff" }}/>
+        <div style={{ position: "absolute", top: 6, left: 0, fontSize: 11, color: "#c6cedbff" }}>
+          {format1(xMin)}
+        </div>
+        <div style={{ position: "absolute", top: 6, left: "50%", transform: "translateX(-50%)", fontSize: 11, color: "#c6cedbff" }}>
+          {format1(xMid)}
+        </div>
+        <div style={{ position: "absolute", top: 6, right: 0, fontSize: 11, color: "#c6cedbff" }}>
+          {format1(xMax)}
+        </div>
+        <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", fontSize: 11, color: "#c6cedbff" }}>
+          {unit ? `Value (${unit})` : "Value"}
+        </div>
+      </div>
+
+
+      {/* y-axis hint (max count) */}
+      <div style={{ fontSize: 11, color: "#c6cedbff", marginTop: 2 }}>max count (inside a bar): {max}</div>
 
     </div>
+
+
   );
 }
 
-function MiniBox({ box }: { box: Box }) {
+function MiniBox({ box, title, unit }: { box: Box; title:string; unit?:string }) {
   if (box.min == null) return null;
+
+
   const W = 260;
+  const H = 80;
 
   //scale for numbers.
   const scale = (x:number)=> ((x - (box.min as number)) / ((box.max as number)-(box.min as number))) * W;
@@ -38,15 +83,54 @@ function MiniBox({ box }: { box: Box }) {
 
 
   return (
-    <div style={{ position:"relative", width: W, height: 28, background:"#eef2ff", borderRadius:4, marginTop:8 }}>
 
-      {/* whiskers */}
-      <div style={{ position:"absolute", left:0, top:13, width:W, height:2, background:"#c7d2fe" }}/>
-      {/* box */}
-      <div style={{ position:"absolute", left:q1, top:6, width: Math.max(2, q3-q1), height:16, background:"#93c5fd", borderRadius:4 }}/>
-      {/* median */}
-      <div style={{ position:"absolute", left:med, top:4, width:2, height:20, background:"#1e3a8a" }}/>
-    
+    <div style={{ width: W, marginTop: 8 }}>
+
+      {/* title */}
+      <div style={{ fontSize: 15, color: "#c6cedbff" }}>{title}</div>
+
+
+
+      {/* plot */}
+      <div style={{ position:"relative", width: W, height: H, background:"#fcf8f8ff", borderRadius:4, marginTop:6 }}>
+
+        {/* whisker line */}
+        <div style={{ position:"absolute", left:0, top: H/2 - 1, width: W, height:2, background:"#c7d2fe" }}/>
+        {/* box */}
+        <div style={{position:"absolute", left:q1, top:6,width: Math.max(2, q3 - q1), height: H - 12, background:"#93c5fd", borderRadius:4}}/>
+        {/* median */}
+        <div style={{ position:"absolute", left:med, top:4, width:2, height:H-8, background:"#1e3a8a" }}
+             title={`median: ${format1(box.median)}${unit ? " " + unit : ""}`}/>
+        {/* min/max tickers */}
+        <div title={`min: ${format1(box.min)}${unit ? " " + unit : ""}`} style={{
+          position: "absolute", left: 0, top: H/2 - 6, width: 2, height: 12, background:"#1e3a8a"
+        }}/>
+        <div title={`max: ${format1(box.max)}${unit ? " " + unit : ""}`} style={{
+          position: "absolute", left: W-2, top: H/2 - 6, width: 2, height: 12, background:"#1e3a8a"
+        }}/>
+      </div>
+
+
+
+      {/* x-axis with labels */}
+      <div style={{ position: "relative", height: 40, marginTop: 4 }}>
+        <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: 1, background: "#e5e7eb" }}/>
+
+        <div style={{ position: "absolute", top: 6, left: 0, fontSize: 11, color: "#c6cedbff" }}> 
+          {format1(box.min)}{unit ? ` ${unit}` : ""}
+        </div>
+        <div style={{ position: "absolute", top: 6, left: "50%", transform: "translateX(-50%)", fontSize: 11, color: "#c6cedbff" }}>
+          {format1(box.median)}{unit ? ` ${unit}` : ""}
+        </div>
+        <div style={{ position: "absolute", top: 6, right: 0, fontSize: 11, color: "#c6cedbff" }}>
+          {format1(box.max)}{unit ? ` ${unit}` : ""}
+        </div>
+        <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", fontSize: 11, color: "#c6cedbff" }}>
+          {unit ? `Value (${unit})` : "Value"}
+        </div>
+
+
+      </div>
     </div>
   );
 }
@@ -162,6 +246,18 @@ function parseToSmiles(raw: string): string[] {
   return t.split(/[\n,; \t]+/).map(s => s.trim()).filter(Boolean);
 }
 
+//data for hist/box
+const unit1 = {
+  mwt:  { label: "MWT",  unit: "Da" },
+  logp: { label: "LogP", unit: ""   },
+  hbd:  { label: "HBD",  unit: "count" },
+  hba:  { label: "HBA",  unit: "count" },
+} as const;
+function format1(num: number | undefined | null, dec = 3) {
+  if (num == null || Number.isNaN(num)) return "-";
+
+  return Number(num).toFixed(dec);
+}
 
 
 
@@ -384,14 +480,12 @@ function App() {
       <div style={{ marginTop: 16 }}>
         {(["mwt","logp","hbd","hba"] as const).map((k) => {
           const dist = summary.distributions[k];
+          const units = unit1[k];
           
           return (
             <div key={k} style={{ marginBottom: 24 }}>
-
-              <h3 style={{ margin: "12px 0 4px" }}>{k.toUpperCase()} distribution</h3>
-              <MiniHist hist={dist.hist} />
-              <MiniBox box={dist.box} />
-
+              <MiniHist hist={dist.hist} title={`${units.label} histogram${units.unit ? ` (${units.unit})` : ""}`} unit={units.unit}/>
+              <MiniBox box={dist.box} title={`${units.label} boxplot${units.unit ? ` (${units.unit})` : ""}`} unit={units.unit}/>
             </div>
           );
         })}
