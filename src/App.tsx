@@ -3,7 +3,7 @@ import React from 'react';
 import './App.css';
 
 
-import {useState, useEffect} from "react"
+import {useState} from "react"
 import { api } from "./lib/api";
 import type { Ro5Item, Ro5Summary, Hist, Box, DownloadPayload } from "./types";
 
