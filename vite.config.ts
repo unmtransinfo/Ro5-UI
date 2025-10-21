@@ -1,7 +1,17 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig, loadEnv, type ConfigEnv } from "vite";
+import react from "@vitejs/plugin-react";
 
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
-})
+export default defineConfig(({ mode }: ConfigEnv) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  const assetRoot = env.VITE_ASSET_ROOT;
+  const port = Number(env.UI_PORT);
+
+  return {
+    base: `${assetRoot}/`,
+    plugins: [react()],
+    server: {
+      host: true,
+      port,
+    },
+  };
+});
