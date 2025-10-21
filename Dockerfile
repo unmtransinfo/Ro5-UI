@@ -1,6 +1,12 @@
-FROM node:20-alpine
+FROM node:22-alpine
+
+ARG UI_PORT=5002
+
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
 COPY . .
-RUN npm run build
+RUN npm install
+
+# EXPOSE here is really just for documentation purposes - doesn't actually do anything
+EXPOSE ${UI_PORT}
+
+CMD ["npm", "run", "dev"]
