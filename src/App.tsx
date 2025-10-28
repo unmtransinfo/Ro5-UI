@@ -220,30 +220,62 @@ function HelpModal({ onClose }: { onClose: () => void }) {
 
 
 
-//parsing for inputting file. see more in the future?
-function parseToSmiles(raw: string): string[] {
-  const t = raw;
-  if (!t) return [];
+//parsing for inputting file.
+function parseToSmiles(raw: string, filename?: string): string[] {
+  const t = raw ?? "";
+  if (!t.trim()) return [];
 
 
-  const maybeCsv = t.includes("\n") && t.includes(",");
+  const isCsvExt = filename?.toLocaleLowerCase().endsWith(".csv");
+  const isSmiExt = filename?.toLocaleLowerCase().endsWith(".smi");
+
+
+  const maybeCsv = isCsvExt || (t.includes("\n") && t.includes(","));
+  //CSV (header optional)
   if (maybeCsv) {
-    const lines = t.split("\n").filter(Boolean);
+    const lines = t.split(/\r?\n/).filter(Boolean);
+    if (lines.length === 0) return [];
+
     const header = lines[0].split(",").map(s => s.trim().toLowerCase());
     //assumption there is smiles.
     let idx = header.indexOf("smiles");
     //idx maybe make changeable later
     if (idx === -1) idx = 0;
 
-    const values = lines.slice(1).map(line => {
+
+    //if has header dont want to skip the top
+    const hasHeader = header.includes("smiles");
+    const dataLines = hasHeader ? lines.slice(1) : lines;
+
+
+    const values = dataLines.map(line => {
       const cols = line.split(",");
       return (cols[idx] || "").trim();
     });
     return values.filter(Boolean);
   }
 
+  // SMI or TXT
+  // .smi: "SMILES" NAME" 
+  // .txt fallback to first token per line
+  const lines = t.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+  const smiles = lines.filter(l => !l.startsWith("#")).map(l => {
+      //take first token (space/tab separated)
+      const first = l.split(/\s+/)[0];
+      return (first || "").trim();
+    }).filter(Boolean);
+
+  //if user pasted all in one line separated by newl/commas/semicolons/space/tab,split
+  //mainly txt
+  if (smiles.length <= 1 && !isSmiExt) {
+    return t.split(/[\n,; \t]+/).map(s => s.trim()).filter(Boolean);
+  }
+
+  return smiles;
+
   //newline, comma, semicolo, space, tab
-  return t.split(/[\n,; \t]+/).map(s => s.trim()).filter(Boolean);
+  //return t.split(/[\n,; \t]+/).map(s => s.trim()).filter(Boolean);
 }
 
 //data for hist/box
@@ -340,7 +372,21 @@ function App() {
   return (
     <>
     <header style={{ maxWidth: 760, margin: "16px auto 0", padding: "0 16px" }}>
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap:8 }}>
+        <button
+          onClick={() => {
+            setSmiles(["C(C(=O)O)N","OC(=O)C(O)C(O)C(=O)[O-]",
+              "[nH+]1c(nc(c2c1nc(c(n2)C)C)N)N","C(=O)(C(CCC[NH+]=C(N)N)N)[O-]",
+              "O=C([O-])C(=O)[O-]", "Brc1ccc(cc1)S(=O)(=O)NC2C(=O)SC2"
+            ].join("\n")); 
+            setPage(1);
+            setShowAll(false);
+          }}
+          style={{ padding: "8px 12px", borderRadius: 8 }}>
+          Demo
+        </button>
+
+
         <button onClick={() => setShowHelp(true)} style={{ padding: "8px 12px", borderRadius: 8 }}>
           Help
         </button>
@@ -358,12 +404,12 @@ function App() {
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
           <input
             type="file"
-            accept=".csv,.txt"
+            accept=".csv,.txt,.smi"
             onChange={async (e) => {
               const file = e.target.files?.[0];
               if (!file) return;
               const text = await file.text();
-              const parsed = parseToSmiles(text);
+              const parsed = parseToSmiles(text, file.name);
               setSmiles(parsed.join("\n"));
               setPage(1);
               setShowAll(false);
