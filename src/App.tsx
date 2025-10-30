@@ -186,17 +186,23 @@ function HelpModal({ onClose }: { onClose: () => void }) {
 
         <h3>How to Use</h3>
         <ol style={{textAlign: "left"}}>
-          <li>Enter one or more SMILES strings (comma separated).</li>
-          <li>Click <b>Compute</b>.</li>
-          <li>View results per compound (if dataset is small), plus overall summary statistics and plots.</li>
-          <li>Download results as CSV for larger datasets.</li>
+          <li>Paste SMILES or <b>Upload</b> a file (.csv, .tsv, .txt, .smi, .smiles).</li>
+          <li>Click <b>Options</b> to configure: <i>Delimiter</i>, <i>Header present</i>, <i>SMILES col</i>, <i>Name col</i>.</li>
+          <li>Click <b>Re-parse</b> to clean the input (shows <code>"SMILES Name"</code> view).</li>
+          <li>Click <b>Compute</b> to get per-compound results + summary stats/plots. Use <b>Download</b> for downloading the set.</li>
         </ol>
+        <h4>Supported Formats</h4>
+        <ul style={{textAlign:"left"}}>
+          <li><b>CSV</b> (comma), <b>TSV</b> (tab), <b>TXT</b> (space/tab/comma), <b>SMI/SMILES</b> (one per line; optional name).</li>
+          <li>Headers are auto-detected. Common SMILES headers (case-insensitive): <code>smiles</code>, <code>molSmiles</code>, <code>Kekule_SMILES</code>, <code>canonical_smiles</code>.</li>
+          <li>No header? Web app assume first column = SMILES. For space-delimited lines: <code>SMILES NAME</code>.</li>
+        </ul>
+    
 
         <h3>Input Limits</h3>
         <ul style={{textAlign: "left"}}>
-          <li>&lt; 5,000 compounds - full results + summary shown on page.</li>
-          <li>5,000-9,999 compounds - summary only + CSV download.</li>
-          <li>&gt; 10,000 compounds - request rejected (too large).</li>
+          <li>&lt; 100 compounds - full results + summary shown on page + CSV download.</li>
+          <li>&gt; 100 compounds - request rejected (too large).</li>
         </ul>
 
         <h3>Outputs</h3>
@@ -220,31 +226,147 @@ function HelpModal({ onClose }: { onClose: () => void }) {
 
 
 
-//parsing for inputting file. see more in the future?
-function parseToSmiles(raw: string): string[] {
-  const t = raw;
-  if (!t) return [];
+//CONFIGURABLE OPTIONS
+type Delim = 'auto' | 'comma' | 'tab' | 'space';
+type Row = { smiles: string; name?: string };
+type ParseOptions = { delimiter: Delim; hasHeader: boolean; smilesCol: number; nameCol?: number };
+
+const SMILES_HEADERS = [
+  'smiles','molsmiles','kekule_smiles','canonical_smiles','can_smiles','mol_smiles','kekule_smiles'
+];
+
+//helper functions
+function detectDelimiter(filename?: string, text?: string): Exclude<Delim,'auto'> {
+  const lower = (filename || '').toLowerCase();
+  if (lower.endsWith('.tsv')) return 'tab';
+  if (lower.endsWith('.csv')) return 'comma';
+  if (lower.endsWith('.smi') || lower.endsWith('.smiles')) return 'space';
+  if (text && /\t/.test(text)) return 'tab';
+  if (text && /,/.test(text)) return 'comma';
+  return 'space';
+}
+function splitByDelim(line: string, d: Exclude<Delim,'auto'>): string[] {
+  if (d === 'tab') return line.split('\t');
+  if (d === 'comma') return line.split(',');
+  // space:collapse multiple spaces/tabs
+  return line.trim().split(/\s+/);
+}
+function guessCols(header: string[]) {
+  const lower = header.map(h => h.toLowerCase());
+  const smilesIdx = lower.findIndex(h => SMILES_HEADERS.includes(h));
+  //put in headers if gets longer
+  const nameIdx = lower.findIndex(h => ['name','id','idnumber','compound','title','molecule','mol','cid'].includes(h));
+  return { smilesCol: smilesIdx === -1 ? 0 : smilesIdx, nameCol: nameIdx === -1 ? undefined : nameIdx };
+}
+function formatRowsAsTwoCols(r: Row[], includeHeader = true, sep = '\t'): string {
+  const lines = r.map(x => [x.smiles ?? '', x.name ?? ''].join(sep));
+  return (includeHeader ? `SMILES${sep}Name\n` : '') + lines.join('\n');
+}
+
+function parseRawToRows(raw: string, filename: string | undefined, o: ParseOptions): { rows: Row[], header?: string[] } {
+  //
+  const d = o.delimiter === 'auto' ? detectDelimiter(filename, raw) : o.delimiter;
+  const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean).filter(l => !l.startsWith('#'));
 
 
-  const maybeCsv = t.includes("\n") && t.includes(",");
+  if (lines.length === 0) return { rows: [] };
+
+
+  let header: string[] | undefined;
+  let smilesCol = o.smilesCol ?? 0;
+  let nameCol = o.nameCol;
+
+  if (o.hasHeader) {
+    header = splitByDelim(lines[0], d);
+    const g = guessCols(header);
+    smilesCol = (Number.isFinite(smilesCol) ? smilesCol : g.smilesCol);
+    nameCol = (nameCol !== undefined ? nameCol : g.nameCol);
+  }
+
+  const body = o.hasHeader ? lines.slice(1) : lines;
+
+
+  //if no header and delimiter is space, assume "SMILES NAME".....(name = second token)
+  const defaultNameColNoHeader = d === 'space' ? 1 : (nameCol ?? 1);
+
+  const parsed: Row[] = body.map(line => {
+    const cols = splitByDelim(line, d);
+    const sIdx = Math.max(0, smilesCol ?? 0);
+    const nIdx = (nameCol !== undefined ? nameCol : defaultNameColNoHeader);
+
+
+    const smiles = (cols[sIdx] || '').trim();
+    let name: string | undefined = undefined;
+
+    if (Number.isFinite(nIdx) && nIdx! >= 0 && nIdx! < cols.length) {
+      name = (cols[nIdx!] || '').trim();
+    }
+    return { smiles, name };
+  }).filter(r => !!r.smiles);
+
+
+  return { rows: parsed, header };
+}
+
+
+/*
+//parsing for inputting file.
+function parseToSmiles(raw: string, filename?: string): string[] {
+  const t = raw ?? "";
+  if (!t.trim()) return [];
+
+
+  const isCsvExt = filename?.toLocaleLowerCase().endsWith(".csv");
+  const isSmiExt = filename?.toLocaleLowerCase().endsWith(".smi");
+
+
+  const maybeCsv = isCsvExt || (t.includes("\n") && t.includes(","));
+  //CSV (header optional)
   if (maybeCsv) {
-    const lines = t.split("\n").filter(Boolean);
+    const lines = t.split(/\r?\n/).filter(Boolean);
+    if (lines.length === 0) return [];
+
     const header = lines[0].split(",").map(s => s.trim().toLowerCase());
     //assumption there is smiles.
     let idx = header.indexOf("smiles");
     //idx maybe make changeable later
     if (idx === -1) idx = 0;
 
-    const values = lines.slice(1).map(line => {
+
+    //if has header dont want to skip the top
+    const hasHeader = header.includes("smiles");
+    const dataLines = hasHeader ? lines.slice(1) : lines;
+
+
+    const values = dataLines.map(line => {
       const cols = line.split(",");
       return (cols[idx] || "").trim();
     });
     return values.filter(Boolean);
   }
 
+  // SMI or TXT
+  // .smi: "SMILES" NAME" 
+  // .txt fallback to first token per line
+  const lines = t.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+  const smiles = lines.filter(l => !l.startsWith("#")).map(l => {
+      //take first token (space/tab separated)
+      const first = l.split(/\s+/)[0];
+      return (first || "").trim();
+    }).filter(Boolean);
+
+  //if user pasted all in one line separated by newl/commas/semicolons/space/tab,split
+  //mainly txt
+  if (smiles.length <= 1 && !isSmiExt) {
+    return t.split(/[\n,; \t]+/).map(s => s.trim()).filter(Boolean);
+  }
+
+  return smiles;
+
   //newline, comma, semicolo, space, tab
-  return t.split(/[\n,; \t]+/).map(s => s.trim()).filter(Boolean);
-}
+  //return t.split(/[\n,; \t]+/).map(s => s.trim()).filter(Boolean);
+}*/
 
 //data for hist/box
 const unit1 = {
@@ -289,6 +411,13 @@ function App() {
   const end1 = start1 + pageSize;
   const visible = showAll ? data : data.slice(start1, end1);
 
+  //configurable options
+  const [showConfig, setShowConfig] = useState(false);
+  const [opts, setOpts] = useState<ParseOptions>({ delimiter: 'auto', hasHeader: true, smilesCol: 0, nameCol: 1 });
+  const [rows, setRows] = useState<Row[]>([]);
+  const [rawFileText, setRawFileText] = useState<string>('');
+  const [fileName, setFileName] = useState<string | undefined>(undefined);
+
   
 
 
@@ -306,9 +435,11 @@ function App() {
     //SENDing
     try {
       //const smilesArray = smiles.split(",").map(s => s.trim());
-      //newline, comma, semicolon
-      const smilesArray = smiles.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean);
+      const effectiveDelim = opts.delimiter === 'auto' ? detectDelimiter(fileName, rawFileText || smiles) : opts.delimiter;
+      const prepared = rows.length? rows : parseRawToRows(smiles, fileName, { ...opts, delimiter: effectiveDelim }).rows;
 
+
+      const smilesArray = prepared.map(r => r.smiles).filter(Boolean);
       const res = await api.post("/ro5", { smiles: smilesArray, vmax: 1 });
 
       //setting!!!!!!
@@ -340,7 +471,28 @@ function App() {
   return (
     <>
     <header style={{ maxWidth: 760, margin: "16px auto 0", padding: "0 16px" }}>
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap:8 }}>
+        <button
+          onClick={() => {
+            const demoRows: Row[] = [
+              { smiles: "C(C(=O)O)N", name: "mol1" },
+              { smiles: "OC(=O)C(O)C(O)C(=O)[O-]", name: "mol2" },
+              { smiles: "[nH+]1c(nc(c2c1nc(c(n2)C)C)N)N", name: "mol3" },
+              { smiles: "C(=O)(C(CCC[NH+]=C(N)N)N)[O-]", name: "mol4" },
+              { smiles: "O=C([O-])C(=O)[O-]", name: "mol5" },
+              { smiles: "Brc1ccc(cc1)S(=O)(=O)NC2C(=O)SC2", name: "mol6" },
+            ];
+            setOpts({delimiter: 'tab', hasHeader:true, smilesCol:0, nameCol:1});
+            setRows(demoRows);
+            setSmiles(formatRowsAsTwoCols(demoRows, true, '\t'));
+            setPage(1);
+            setShowAll(false);
+          }}
+          style={{ padding: "8px 12px", borderRadius: 8 }}>
+          Demo
+        </button>
+
+
         <button onClick={() => setShowHelp(true)} style={{ padding: "8px 12px", borderRadius: 8 }}>
           Help
         </button>
@@ -358,15 +510,34 @@ function App() {
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
           <input
             type="file"
-            accept=".csv,.txt"
+            accept=".csv,.txt,.smi,.smiles,.tsv"
             onChange={async (e) => {
               const file = e.target.files?.[0];
               if (!file) return;
               const text = await file.text();
-              const parsed = parseToSmiles(text);
-              setSmiles(parsed.join("\n"));
+
+              setFileName(file.name);
+              setRawFileText(text);
+              setSmiles(text);
+              setRows([]);
               setPage(1);
               setShowAll(false);
+
+
+              //defaulting
+              const d = detectDelimiter(file.name, text);
+              const first = (text.split(/\r?\n/)[0] || '').trim();
+              const headerTokens = splitByDelim(first, d).map(s => s.toLowerCase());
+              const hasHeader = headerTokens.some(t => SMILES_HEADERS.includes(t)) || headerTokens.includes('name');
+
+              setOpts(o => ({
+                ...o,
+                delimiter: 'auto', //we detect it on re-parse
+                hasHeader,
+                smilesCol: 0,
+                nameCol: 1
+              }));
+
             }}
           />
           
@@ -376,9 +547,9 @@ function App() {
         <textarea
           value={smiles}
           onChange={(e) => setSmiles(e.target.value)}
-          placeholder="Enter SMILES (need to be seperated by: comma, newline, semicolon)"
+          placeholder="Enter SMILES"
           rows={3}
-          style={{ flex: 1, padding: 8, fontSize:14, borderRadius: 10, border: "1px solid #ccc", resize:"vertical", lineHeight: 1}}
+          style={{ flex: 1, padding: 8, fontSize:14, borderRadius: 10, border: "1px solid #ccc", resize:"both", lineHeight: 1}}
           required/>
         <button
           type="submit"
@@ -388,6 +559,83 @@ function App() {
         </button>
         <button type="button" onClick={() => setSmiles("")}>Clear</button>
       </form>
+
+      {/* EXPANDABLE CONFIGURABLE OPTIONs */}
+      <button onClick={() => setShowConfig(s => !s)} style={{ padding: 8, borderRadius: 24 }}>
+        {showConfig ? "Hide Configurable Options" : "Configurable Options (for uploaded files)"}
+      </button>
+
+      {showConfig && (
+        <div style={{ marginTop: 12, padding: 12, border: "1px solid #eee", borderRadius: 12}}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8, alignItems: "center",justifyContent: "center" }}>
+            
+            <label>Delimiter: <br/>
+                <select
+                  value={opts.delimiter}
+                  onChange={e => setOpts({ ...opts, delimiter: e.target.value as Delim })}>
+                <option value="auto">Auto</option>
+                <option value="comma">Comma (,)</option>
+                <option value="tab">Tab (\t)</option>
+                <option value="space">Space</option>
+              </select>
+            </label>
+            
+            
+            <label style={{ marginLeft: 12 }}>
+              <input
+                type="checkbox"
+                checked={opts.hasHeader}
+                onChange={e => setOpts({ ...opts, hasHeader: e.target.checked })}/> 
+                Header present <br/>
+            </label>
+          
+            <label style={{ marginLeft: 12 }}>
+              SMILES col (0-based):
+              <input
+                type="number"
+                min={0}
+                value={opts.smilesCol}
+                onChange={e => setOpts({ ...opts, smilesCol: Number(e.target.value) })}
+                style={{ width: 70 }}
+              />
+            </label>
+
+            <label style={{ marginLeft: 12 }}>
+              Name col (0-based, optional):
+              <input
+                type="number"
+                min={0}
+                value={opts.nameCol ?? ""}
+                onChange={e => setOpts({ ...opts, nameCol: e.target.value === "" ? undefined : Number(e.target.value) })}
+                style={{ width: 70 }}
+              />
+            </label>
+            
+            <button
+              onClick={() => {
+                const effectiveDelim = opts.delimiter === 'auto' ? detectDelimiter(fileName, rawFileText || smiles) : opts.delimiter;
+                const { rows: newRows } = parseRawToRows(rawFileText || smiles, fileName, { ...opts, delimiter: effectiveDelim });
+                setRows(newRows);
+                //make clean two-column view in textarea
+                setSmiles(formatRowsAsTwoCols(newRows, true, '\t')); 
+                setPage(1);
+                setShowAll(false);
+              }}
+              style={{gridColumn: "1 / -1",margin: "0 auto", justifySelf: "center", padding: "8px 12px", borderRadius: 24 }}>
+              Re-parse
+            </button>
+          
+          </div>
+
+          <small style={{ color: "#713737ff" }}>
+            *Press Re-Parse button to see updated text-area* <br/>
+            The app keep the header visible in the textarea but it won't be sent to the API
+          </small>
+        </div>
+      )}
+
+
+
 
 
       {error ? <div style={{ color: "crimson" }}>{error}</div> : null}
@@ -514,4 +762,3 @@ function App() {
 
 
 export default App;
-
