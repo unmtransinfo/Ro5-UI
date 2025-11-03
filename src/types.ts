@@ -5,6 +5,7 @@ export type Ro5Item = {
   mwt: number;
   passes_ro5: boolean;
   smiles: string;
+  name?: string //name end-to-end feature(can be optional)
   violations: number;
   vmax: number;
   mwt_violation: boolean;
