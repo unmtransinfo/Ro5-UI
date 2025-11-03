@@ -440,7 +440,15 @@ function App() {
 
 
       const smilesArray = prepared.map(r => r.smiles).filter(Boolean);
-      const res = await api.post("/ro5", { smiles: smilesArray, vmax: 1 });
+      const namesArray = prepared.map(r => r.name ?? "");
+
+      
+      //API REQUEST!!!!
+      const res = await api.post("/ro5", { 
+        smiles: smilesArray, 
+        names: namesArray,
+        vmax: 1 });
+
 
       //setting!!!!!!
       setData(res.data.items);
@@ -650,7 +658,7 @@ function App() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  {["SMILES","MWT","LogP","HBD","HBA","Violations","Passes","VMAX","MWT_violation","HBD_violation","HBA_violation","LOGP_violation"].map(h => (
+                  {["Name", "SMILES","MWT","LogP","HBD","HBA","Violations","Passes","VMAX","MWT_violation","HBD_violation","HBA_violation","LOGP_violation"].map(h => (
                     <th key={h} style={{ textAlign: "left", padding: "10px", borderBottom: "1px solid #eeeeee73" }}>{h}</th>
                   ))}
                 </tr>
@@ -661,6 +669,7 @@ function App() {
               {visible.map((item, i) => (
                 <tr key={`${item.smiles}-${start1+i}`}>
 
+                  <td style={{ padding: "10px", borderBottom: "1px solid #f4f4f4" }}>{item.name ?? ""}</td>
                   <td style={{ padding: "10px", borderBottom: "1px solid #f4f4f4" }}>{item.smiles}</td>
                   <td style={{ padding: "10px", borderBottom: "1px solid #f4f4f4" }}>{item.mwt}</td>
                   <td style={{ padding: "10px", borderBottom: "1px solid #f4f4f4" }}>{item.logp}</td>
