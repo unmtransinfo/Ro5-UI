@@ -201,8 +201,8 @@ function HelpModal({ onClose }: { onClose: () => void }) {
 
         <h3>Input Limits</h3>
         <ul style={{textAlign: "left"}}>
-          <li>&lt; 100 compounds - full results + summary shown on page + CSV download.</li>
-          <li>&gt; 100 compounds - request rejected (too large).</li>
+          <li>&lt; 1500 compounds - full results + summary shown on page + CSV download.</li>
+          <li>&gt; 1500 compounds - request rejected (too large).</li>
         </ul>
 
         <h3>Outputs</h3>
@@ -463,12 +463,28 @@ function App() {
 
     }
     catch (err: any) {
-      if(err?.response?.status === 413) {
-        console.error("Input too large.");
-        setError("Input too large.");
+
+      const status = err?.response?.status;
+      const data = err?.response?.data;
+      let msg = 'Something went wrong.';
+
+      if (status === 413) {
+        msg = typeof data === 'string'
+          ? data
+          : (data?.error ?? 'Input too large.');
       }
-      console.error("Error details:", err);
-      setError(err?.response?.data || err.message);
+      else if (typeof data === 'string') {
+        msg = data;
+      }
+      else if (data?.error) {
+        msg = data.error;
+      }
+      else if (err?.message) {
+        msg = err.message;
+      }
+
+      console.error('Error details:', err);
+      setError(msg);
     }
     finally {
       setLoading(false);
