@@ -389,6 +389,7 @@ function format1(num: number | undefined | null, dec = 3) {
 
 
 
+
 function App() {
   
   const [smiles, setSmiles] = useState("");
@@ -418,7 +419,51 @@ function App() {
   const [rawFileText, setRawFileText] = useState<string>('');
   const [fileName, setFileName] = useState<string | undefined>(undefined);
 
+  //choose file more nicer
+  const [dragOver, setDragOver] = useState(false);
+
   
+
+
+
+
+  //reusable func for uploading file
+  async function handleFile(file: File) {
+    const text = await file.text();
+
+    setFileName(file.name);
+    setRawFileText(text);
+    setSmiles(text);
+    setRows([]);
+    setPage(1);
+    setShowAll(false);
+
+
+    //defaulting
+    const d = detectDelimiter(file.name, text);
+    const first = (text.split(/\r?\n/)[0] || '').trim();
+    const headerTokens = splitByDelim(first, d).map(s => s.toLowerCase());
+    const hasHeader = headerTokens.some(t => SMILES_HEADERS.includes(t)) || headerTokens.includes('name');
+
+    setOpts(o => ({
+      ...o,
+      delimiter: 'auto', //we detect it on re-parse
+      hasHeader,
+      smilesCol: 0,
+      nameCol: 1
+    }));
+  }
+  function clearFile() {
+    setFileName(undefined);
+    setRawFileText('');
+    setSmiles('');
+    setRows([]);
+  }
+
+
+
+
+
 
 
   //!!!
@@ -520,53 +565,132 @@ function App() {
         <button onClick={() => setShowHelp(true)} style={{ padding: "8px 12px", borderRadius: 8 }}>
           Help
         </button>
+
+        <button
+          onClick={() => window.location.reload()}
+          title="Reset">
+          Reset
+        </button>
+
       </div>
     </header>
 
 
     <main style={{ maxWidth: 760, margin: " 40px auto", padding: 16}}>
       <h1 style={{ marginBottom: 20 }}>Lipinski Rule of 5</h1>
+      
 
 
-      <form onSubmit={submit} style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-
-        {/* testing the file input and clear!!!  */}
+      {/* file input and clear!!!  */}
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-          <input
-            type="file"
-            accept=".csv,.txt,.smi,.smiles,.tsv"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              const text = await file.text();
-
-              setFileName(file.name);
-              setRawFileText(text);
-              setSmiles(text);
-              setRows([]);
-              setPage(1);
-              setShowAll(false);
-
-
-              //defaulting
-              const d = detectDelimiter(file.name, text);
-              const first = (text.split(/\r?\n/)[0] || '').trim();
-              const headerTokens = splitByDelim(first, d).map(s => s.toLowerCase());
-              const hasHeader = headerTokens.some(t => SMILES_HEADERS.includes(t)) || headerTokens.includes('name');
-
-              setOpts(o => ({
-                ...o,
-                delimiter: 'auto', //we detect it on re-parse
-                hasHeader,
-                smilesCol: 0,
-                nameCol: 1
-              }));
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={async (e) => {
+              e.preventDefault();
+              setDragOver(false);
+              const f = e.dataTransfer.files?.[0];
+              if (f) await handleFile(f);
 
             }}
-          />
-          
+
+            style={{
+              border: dragOver ? "2px solid #4941e8ff" : "1px dashed #ddd", //LATER: pick better color, right now just handpicked
+              borderRadius: 14,
+              padding: 6,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              justifyContent: "space-between",
+              background: dragOver ? "rgba(79,70,229,0.05)" : "transparent",
+              marginBottom: 8
+            }}
+          >
+
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+
+              <span style={{ fontSize: 14, color: "#555" }}>
+                Drag & drop a file here, or
+              </span>
+
+              {/*hidden input and styled label as button */}
+              <input
+                id="file-input"
+                type="file"
+                accept=".csv,.tsv,.txt,.smi,.smiles"
+                style={{ display: "none" }}
+                
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  await handleFile(file);
+
+                  //this allows re-selecting the same file. 
+                  e.currentTarget.value = "";
+                }}
+              />
+
+              <label
+                htmlFor="file-input" //future note; similar like "for" in HTML but its React equivalent
+
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  background: "#4f46e5",
+                  color: "white",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+                }}>
+                Choose File
+              </label>
+
+              <span style={{ fontSize: 12, color: "#646464ff" }}>
+                Supported: .csv, .tsv, .txt, .smi, .smiles
+              </span>
+            </div>
+
+            {/*Showing filename if there is */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {fileName && (
+                <span style={{
+                  fontSize: 13,
+                  color: "#333",
+                  background: "#f6f7fb",
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #eee",
+                  maxWidth: 240,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis"
+                }}>
+                  {fileName}
+                </span>
+              )}
+              {fileName && (
+                <button
+                  type="button"
+                  onClick={clearFile}
+
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: "1px solid #000000ff",
+                    color:"#333",
+                    background: "white",
+                    cursor: "pointer"
+                  }}
+                  title="Clear file">
+                  x
+                </button>
+              )}
+
+            </div>
+          </div>
         </div>
 
+      <form onSubmit={submit} style={{ display: "flex", gap: 8, marginBottom: 16 }}>
 
         <textarea
           value={smiles}
@@ -578,6 +702,7 @@ function App() {
         <button
           type="submit"
           disabled={!smiles || loading}
+          className="btn-primary1"
           style={{ padding: "10px 16px", borderRadius: 8 }}>
           {loading ? "Computing..." : "Compute"}
         </button>
