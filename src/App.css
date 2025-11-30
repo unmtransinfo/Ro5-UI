@@ -76,3 +76,17 @@
   cursor: not-allowed;
   box-shadow: none;
 }
+
+/*table new feature anim */
+.results-enter {
+  animation: fadeInUp 800ms ease-out both;
+}
+/*stagger each row a little */
+.tr-enter {
+  animation: fadeInUp 400ms ease-out both;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

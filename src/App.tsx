@@ -422,8 +422,8 @@ function App() {
   //choose file more nicer
   const [dragOver, setDragOver] = useState(false);
 
-  
-
+  //animation for table
+  const [resultsKey, setResultsKey] = useState(0);
 
 
 
@@ -504,7 +504,8 @@ function App() {
       setPage(1);
       setShowAll(false);
 
-      
+      //replay animation and
+      setResultsKey(k => k + 1);
 
     }
     catch (err: any) {
@@ -792,7 +793,8 @@ function App() {
 
       
       {data.length > 0 ? (
-        <div style={{ border: "1px solid #eee", borderRadius: 30, padding:25 }}>
+        <div id="results" key={resultsKey} className="results-enter" 
+            style={{ border: "1px solid #eee", borderRadius: 30, padding:25}}>
           <h2 style={{ marginTop: 0 }}>Results</h2>
 
           <div style={{ overflowX: "auto" }}>
@@ -808,7 +810,10 @@ function App() {
               <tbody>
 
               {visible.map((item, i) => (
-                <tr key={`${item.smiles}-${start1+i}`}>
+                <tr key={`${item.smiles}-${start1+i}`} 
+                    className="tr-enter"
+                    style={{ animationDelay: `${i * 35}ms` }}  //stagger
+                >
 
                   <td style={{ padding: "10px", borderBottom: "1px solid #f4f4f4" }}>{item.name ?? ""}</td>
                   <td style={{ padding: "10px", borderBottom: "1px solid #f4f4f4" }}>{item.smiles}</td>
@@ -828,7 +833,7 @@ function App() {
               ))}
 
               </tbody>
-              </table>
+            </table>
           </div>
 
           {/* controls */}
