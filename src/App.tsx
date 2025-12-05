@@ -587,45 +587,50 @@ function App() {
 
   return (
     <>
-    <header style={{ maxWidth: 760, margin: "16px auto 0", padding: "0 16px" }}>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap:8 }}>
-        <button
-          onClick={() => {
-            const demoRows: Row[] = [
-              { smiles: "C(C(=O)O)N", name: "mol1" },
-              { smiles: "OC(=O)C(O)C(O)C(=O)[O-]", name: "mol2" },
-              { smiles: "[nH+]1c(nc(c2c1nc(c(n2)C)C)N)N", name: "mol3" },
-              { smiles: "C(=O)(C(CCC[NH+]=C(N)N)N)[O-]", name: "mol4" },
-              { smiles: "O=C([O-])C(=O)[O-]", name: "mol5" },
-              { smiles: "Brc1ccc(cc1)S(=O)(=O)NC2C(=O)SC2", name: "mol6" },
-            ];
-            setOpts({delimiter: 'tab', hasHeader:true, smilesCol:0, nameCol:1});
-            setRows(demoRows);
-            setSmiles(formatRowsAsTwoCols(demoRows, true, '\t'));
-            setPage(1);
-            setShowAll(false);
-          }}
-          style={{ padding: "8px 12px", borderRadius: 8 }}>
-          Demo
-        </button>
+    <header style={{ padding: "16px 32px",borderBottom: "1px solid #333",marginBottom: 0 }}>
+
+      <div style={{ maxWidth: "1400px", margin: "0 auto",display: "flex", justifyContent: "space-between",alignItems: "center" }}>
+        
+        <h1 style={{ margin: 0, fontSize: "42px",flex:1, textAlign:"center" }}>Lipinski Rule of 5</h1>
+        
+        <div style={{ display: "flex", gap: 8,marginLeft:"auto", right:"32px" }}>
+          <button
+            onClick={() => {
+              const demoRows: Row[] = [
+                { smiles: "C(C(=O)O)N", name: "mol1" },
+                { smiles: "OC(=O)C(O)C(O)C(=O)[O-]", name: "mol2" },
+                { smiles: "[nH+]1c(nc(c2c1nc(c(n2)C)C)N)N", name: "mol3" },
+                { smiles: "C(=O)(C(CCC[NH+]=C(N)N)N)[O-]", name: "mol4" },
+                { smiles: "O=C([O-])C(=O)[O-]", name: "mol5" },
+                { smiles: "Brc1ccc(cc1)S(=O)(=O)NC2C(=O)SC2", name: "mol6" },
+              ];
+              setOpts({delimiter: 'tab', hasHeader:true, smilesCol:0, nameCol:1});
+              setRows(demoRows);
+              setSmiles(formatRowsAsTwoCols(demoRows, true, '\t'));
+              setPage(1);
+              setShowAll(false);
+            }}
+            style={{ padding: "8px 12px", borderRadius: 8 }}>
+            Demo
+          </button>
 
 
-        <button onClick={() => setShowHelp(true)} style={{ padding: "8px 12px", borderRadius: 8 }}>
-          Help
-        </button>
+          <button onClick={() => setShowHelp(true)} style={{ padding: "8px 12px", borderRadius: 8 }}>
+            Help
+          </button>
 
-        <button
-          onClick={() => window.location.reload()}
-          title="Reset">
-          Reset
-        </button>
-
+          <button
+            onClick={() => window.location.reload()}
+            title="Reset">
+            Reset
+          </button>
+        </div>
       </div>
     </header>
 
 
-    <main style={{ maxWidth: 760, margin: " 40px auto", padding: 16}}>
-      <h1 style={{ marginBottom: 20 }}>Lipinski Rule of 5</h1>
+    <main style={{ maxWidth: "1400px",margin: "0 auto",padding: "32px"}}>
+      
       
 
 
@@ -643,19 +648,21 @@ function App() {
             }}
 
             style={{
-              border: dragOver ? "2px solid #4941e8ff" : "1px dashed #ddd", //LATER: pick better color, right now just handpicked
-              borderRadius: 14,
-              padding: 6,
+              border: dragOver ? "2px solid #4941e8ff" : "1px dashed #ddd",
+              borderRadius: 10,
+              padding: "12px 16px",
               display: "flex",
               alignItems: "center",
-              gap: 6,
-              justifyContent: "space-between",
+              gap: 12,
+              justifyContent: "center",
               background: dragOver ? "rgba(79,70,229,0.05)" : "transparent",
-              marginBottom: 8
+              marginBottom: 16,
+              maxWidth: "600px",
+              margin: "0 auto 16px"
             }}
           >
 
-            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            
 
               <span style={{ fontSize: 14, color: "#555" }}>
                 Drag & drop a file here, or
@@ -682,21 +689,21 @@ function App() {
                 htmlFor="file-input" //future note; similar like "for" in HTML but its React equivalent
 
                 style={{
-                  padding: "10px 14px",
+                  padding: "8px 14px",
                   borderRadius: 10,
                   background: "#4f46e5",
                   color: "white",
                   fontWeight: 600,
                   cursor: "pointer",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+                  fontSize: 14
                 }}>
                 Choose File
               </label>
 
-              <span style={{ fontSize: 12, color: "#646464ff" }}>
+              <span style={{ fontSize: 13, color: "#646464ff" }}>
                 Supported: .csv, .tsv, .txt, .smi, .smiles
               </span>
-            </div>
+            
 
             {/*Showing filename if there is */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -705,10 +712,10 @@ function App() {
                   fontSize: 13,
                   color: "#333",
                   background: "#f6f7fb",
-                  padding: "6px 10px",
+                  padding: "4px 10px",
                   borderRadius: 8,
                   border: "1px solid #eee",
-                  maxWidth: 240,
+                  maxWidth: 200,
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis"
@@ -722,12 +729,13 @@ function App() {
                   onClick={clearFile}
 
                   style={{
-                    padding: "8px 10px",
+                    padding: "4px 8px",
                     borderRadius: 8,
                     border: "1px solid #000000ff",
                     color:"#333",
                     background: "white",
-                    cursor: "pointer"
+                    cursor: "pointer",
+                    fontSize: 12
                   }}
                   title="Clear file">
                   x
@@ -744,8 +752,8 @@ function App() {
           value={smiles}
           onChange={(e) => setSmiles(e.target.value)}
           placeholder="Enter SMILES"
-          rows={3}
-          style={{ flex: 1, padding: 8, fontSize:14, borderRadius: 10, border: "1px solid #ccc", resize:"both", lineHeight: 1}}
+          rows={5}
+          style={{ flex: 1, padding: "10px 12px", fontSize:14, borderRadius: 10, border: "1px solid #ccc", resize:"both", lineHeight: 1, minHeight:"40px"}}
           required/>
         <button
           type="submit"
@@ -841,7 +849,7 @@ function App() {
       
       {data.length > 0 ? (
         <div id="results" key={resultsKey} className="results-enter" 
-            style={{ border: "1px solid #eee", borderRadius: 30, padding:25}}>
+            style={{ border: "1px solid #eee", borderRadius: 30, padding:25, marginTop: "30px"}}>
           <h2 style={{ marginTop: 0 }}>Results</h2>
 
           <div style={{ overflowX: "auto" }}>
