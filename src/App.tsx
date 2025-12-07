@@ -476,6 +476,16 @@ function App() {
 
   //reusable func for uploading file
   async function handleFile(file: File) {
+    //5MB file upload limit:
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      setError(`File is too large (${sizeMb} MB). Maximum allowed is 5 MB.`);
+      alert("File is too large. Maximum allowed size is 5 MB.");
+      return;
+    }
+
+
     const text = await file.text();
 
     setFileName(file.name);
@@ -591,7 +601,7 @@ function App() {
 
       <div style={{ maxWidth: "1400px", margin: "0 auto",display: "flex", justifyContent: "space-between",alignItems: "center" }}>
         
-        <h1 style={{ margin: 0, fontSize: "42px",flex:1, textAlign:"center" }}>Lipinski Rule of 5</h1>
+        <h1 style={{ margin: 0, fontSize: "42px",flex:1, textAlign:"center" }}>Lipinski Ro5 Analyzer</h1>
         
         <div style={{ display: "flex", gap: 8,marginLeft:"auto", right:"32px" }}>
           <button
@@ -634,7 +644,7 @@ function App() {
       
 
 
-      {/* file input and clear!!!  */}
+      {/* file input logic (drag logic and choose button logic) */}
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
           <div
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -765,6 +775,9 @@ function App() {
         <button type="button" onClick={() => setSmiles("")}>Clear</button>
       </form>
 
+
+
+
       {/* EXPANDABLE CONFIGURABLE OPTIONs */}
       <button onClick={() => setShowConfig(s => !s)} style={{ padding: 8, borderRadius: 24 }}>
         {showConfig ? "Hide Configurable Options" : "Configurable Options (for uploaded files)"}
@@ -842,11 +855,13 @@ function App() {
 
 
 
-
+      {/*If there are any errors this block will trigger */}
       {error ? <div style={{ color: "crimson" }}>{error}</div> : null}
 
 
-      
+
+
+      {/*Main Result logic */}
       {data.length > 0 ? (
         <div id="results" key={resultsKey} className="results-enter" 
             style={{ border: "1px solid #eee", borderRadius: 30, padding:25, marginTop: "30px"}}>
@@ -995,6 +1010,7 @@ function App() {
     )}
 
 
+    {/*Download Logic block */}
     {note && <div style={{ marginTop: 12, color: "#6b7280" }}>{note}</div>}
     {download && (
       <button onClick={() => triggerDownload(download)}
@@ -1007,6 +1023,8 @@ function App() {
 
     </main>
 
+
+    {/*Help button block logic */}
     {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
 
     </>
