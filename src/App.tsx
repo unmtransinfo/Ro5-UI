@@ -276,7 +276,14 @@ function HelpModal({ onClose }: { onClose: () => void }) {
 //CONFIGURABLE OPTIONS
 type Delim = 'auto' | 'comma' | 'tab' | 'space';
 type Row = { smiles: string; name?: string };
-type ParseOptions = { delimiter: Delim; hasHeader: boolean; smilesCol: number; nameCol?: number };
+type ParseOptions = { 
+  delimiter: Delim; 
+  hasHeader: boolean; 
+  smilesCol: number; 
+  nameCol?: number;
+  startIndex: number;
+  nMolecules?: number;
+};
 
 const SMILES_HEADERS = [
   'smiles','molsmiles','kekule_smiles','canonical_smiles','can_smiles','mol_smiles','kekule_smiles'
@@ -461,7 +468,14 @@ function App() {
 
   //configurable options
   const [showConfig, setShowConfig] = useState(false);
-  const [opts, setOpts] = useState<ParseOptions>({ delimiter: 'auto', hasHeader: true, smilesCol: 0, nameCol: 1 });
+  const [opts, setOpts] = useState<ParseOptions>({ 
+    delimiter: 'auto', 
+    hasHeader: true, 
+    smilesCol: 0, 
+    nameCol: 1,
+    startIndex: 0,
+    nMolecules: undefined,
+   });
   const [rows, setRows] = useState<Row[]>([]);
   const [rawFileText, setRawFileText] = useState<string>('');
   const [fileName, setFileName] = useState<string | undefined>(undefined);
@@ -507,7 +521,10 @@ function App() {
       delimiter: 'auto', //we detect it on re-parse
       hasHeader,
       smilesCol: 0,
-      nameCol: 1
+      nameCol: 1,
+
+      startIndex: o.startIndex ?? 0,
+      nMolecules: o.nMolecules,
     }));
   }
   function clearFile() {
@@ -614,7 +631,7 @@ function App() {
                 { smiles: "O=C([O-])C(=O)[O-]", name: "mol5" },
                 { smiles: "Brc1ccc(cc1)S(=O)(=O)NC2C(=O)SC2", name: "mol6" },
               ];
-              setOpts({delimiter: 'tab', hasHeader:true, smilesCol:0, nameCol:1});
+              setOpts({delimiter: 'tab', hasHeader:true, smilesCol:0, nameCol:1,startIndex: 0,nMolecules: undefined});
               setRows(demoRows);
               setSmiles(formatRowsAsTwoCols(demoRows, true, '\t'));
               setPage(1);
@@ -828,16 +845,71 @@ function App() {
                 style={{ width: 70 }}
               />
             </label>
+
+
+
+            <label style={{ marginLeft: 12 }}>
+              Start index (0-based):
+              <input
+                type="number"
+                min={0}
+                value={opts.startIndex}
+                onChange={(e) =>
+                  setOpts({
+                    ...opts,
+                    startIndex: Number(e.target.value) || 0,
+                  })
+                }
+                style={{ width: 90 }}
+              />
+            </label>
+
+            <label style={{ marginLeft: 12 }}>
+              N. molecules (optional):
+              <input
+                type="number"
+                min={1}
+                value={opts.nMolecules ?? ""}
+                onChange={(e) =>
+                  setOpts({
+                    ...opts,
+                    nMolecules: e.target.value === "" ? undefined : Number(e.target.value),
+                  })
+                }
+                style={{ width: 90 }}
+              />
+            </label>
+
             
             <button
               onClick={() => {
                 const effectiveDelim = opts.delimiter === 'auto' ? detectDelimiter(fileName, rawFileText || smiles) : opts.delimiter;
                 const { rows: newRows } = parseRawToRows(rawFileText || smiles, fileName, { ...opts, delimiter: effectiveDelim });
-                setRows(newRows);
+                
+                
+                //Slcing(Start Index + N. Molecules): slice according to Start index + N. molecules
+                const start = Math.max(0, opts.startIndex || 0);
+                let end = newRows.length;
+                if (opts.nMolecules && opts.nMolecules > 0) {
+                  end = Math.min(newRows.length, start + opts.nMolecules);
+                }
+                const sliced1 = newRows.slice(start, end);
+                
+                
+                setRows(sliced1);
                 //make clean two-column view in textarea
-                setSmiles(formatRowsAsTwoCols(newRows, true, '\t')); 
+                setSmiles(formatRowsAsTwoCols(sliced1, true, '\t')); 
                 setPage(1);
                 setShowAll(false);
+
+
+                ///RESET slice parameters!
+                setOpts(o => ({
+                  ...o,
+                  startIndex: 0,
+                  nMolecules: undefined,
+                }));
+
               }}
               style={{gridColumn: "1 / -1",margin: "0 auto", justifySelf: "center", padding: "8px 12px", borderRadius: 24 }}>
               Re-parse
@@ -847,7 +919,11 @@ function App() {
 
           <small style={{ color: "#713737ff" }}>
             *Press Re-Parse button to see updated text-area* <br/>
-            The app keep the header visible in the textarea but it won't be sent to the API
+            Re-parse always uses the original uploaded file.
+            If a file is uploaded, manual edits in the textarea are ignored during re-parsing.
+            <br/>
+            Re-parse can be used multiple times.
+            It always re-interprets the original uploaded file using the current settings.
           </small>
         </div>
       )}
