@@ -1,45 +1,17 @@
 import React from 'react';
-
 import './App.css';
-
 
 import {useState} from "react"
 import { api } from "./lib/api";
 import type { Ro5Item, Ro5Summary, DownloadPayload } from "./types";
-
+import { triggerDownload } from "./lib/download";
 
 import type { ParseOptions, Row, Delim } from "./lib/parse";
 
-import {
-  parseRawToRows,
-  detectDelimiter,
-  formatRowsAsTwoCols,
-  splitByDelim,
-  SMILES_HEADERS
-} from "./lib/parse";
+import { parseRawToRows, detectDelimiter, formatRowsAsTwoCols, splitByDelim, SMILES_HEADERS } from "./lib/parse";
 
 import { MiniHist } from "./components/MiniHist";
 import { MiniBox } from "./components/MiniBox";
-
-
-
-
-//for download
-function triggerDownload(d: DownloadPayload) {
-  const bytes = atob(d.content);
-  const arr = new Uint8Array(bytes.length);
-
-  for (let i = 0; i < bytes.length; i++) {
-    arr[i] = bytes.charCodeAt(i);
-  }
-  const blob = new Blob([arr], { type: d.mime || "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = d.filename || "ro5_results.csv";
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 
 //help
