@@ -5,7 +5,7 @@ import './App.css';
 
 import {useState} from "react"
 import { api } from "./lib/api";
-import type { Ro5Item, Ro5Summary, Hist, Box, DownloadPayload } from "./types";
+import type { Ro5Item, Ro5Summary, DownloadPayload } from "./types";
 
 
 import type { ParseOptions, Row, Delim } from "./lib/parse";
@@ -18,181 +18,11 @@ import {
   SMILES_HEADERS
 } from "./lib/parse";
 
-
-
-//helper function for box/histogram
-function MiniHist({ hist, title, unit }: { hist: Hist; title:string; unit?:string }) {
-  if(!hist?.counts?.length) return null;
-
-  //W is chart width and H is bar max height, others should make sense
-  const W = 360;
-  const H = 120;
-  const max = Math.max(1, ...hist.counts);
-  const bins = hist.bins;
-  const xMin = bins[0];
-  const xMax = bins[bins.length -1]
-  const xMid = bins[Math.floor(bins.length / 2)];
-
-  //compute how wide each bar should be. W substract the space needed for gaps(4px per bar) and whateever is left we div equally by # of bars. 
-  const barWidth = Math.max(6, (W - 4 * hist.counts.length) / hist.counts.length);
-
-
-  return (
-    <div style={{ width: "100%", maxWidth: W, marginTop: 4 }}>
-
-      {/* title */}
-      <div style={{ fontSize: 13, fontWeight: 500, color: "#eef2ff", marginBottom: 4 }}>
-        {title}
-      </div>
-
-
-      {/* bars ; c=counts for that bin,i=index for bin. (not sure what i did here before when starting but recheck maybe next time)*/}
-      <div
-        style={{
-          display: "flex",
-          gap: 4,
-          alignItems: "flex-end",
-          height: H,
-          marginTop: 4,
-          padding: "8px 8px 4px",
-          borderRadius: 12,
-          background: "linear-gradient(135deg, #eef2ff, #f9fafb)",
-        }}
-      >
-        {hist.counts.map((c, i) => (
-          <div
-            key={i}
-            title={`${format1(bins[i])} - ${format1(bins[i + 1])}${unit ? " " + unit : ""}: ${c}`}
-            style={{
-              width: barWidth, //explanatory
-              height: `${(c / max) * (H - 20)}px`, //bar height scaled to its count relative to the max
-              borderRadius: 999,
-              background: "linear-gradient(180deg, #6366f1, #3b82f6)", //smooth blue top to bottom color
-
-              transition: "transform 0.35s ease-out, box-shadow 0.35s ease-out",//anim(for below:)
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "scale(1.15)";
-              e.currentTarget.style.boxShadow = "0 4px 12px rgba(37,99,235,0.9)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-              e.currentTarget.style.boxShadow = "0 2px 6px rgba(37,99,235,0.1)";
-            }}
-          />
-        ))}
-      </div>
-
-      {/* x-axis */}
-      <div style={{ position: "relative", height: 32, marginTop: 6 }}>
-        
-        {/*a line*/}
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            top: 0,
-            height: 1,
-            background: "#e5e7eb",
-          }}
-        />
-
-        <div style={{ position: "absolute", top: 6,left: 0, fontSize: 11,color: "#c6cedbff" }}>
-          {format1(xMin)}
-        </div>
-        <div style={{position: "absolute",top: 6,left: "50%",transform: "translateX(-50%)",fontSize: 11,color: "#c6cedbff",}}>
-          {format1(xMid)}
-        </div>
-        <div style={{ position: "absolute", top: 6, right: 0, fontSize: 11,color: "#c6cedbff" }}>
-          {format1(xMax)}
-        </div>
-
-        <div style={{position: "absolute", bottom: 0, left: "50%",transform: "translateX(-50%)",fontSize: 11,color: "#c6cedbff",}}>
-          {unit ? `Value (${unit})` : "Value"}
-        </div>
-
-      </div>
-
-      {/* y-axis  */}
-      <div style={{ fontSize: 11, color: "#c6cedbff", marginTop: 2 }}>
-        Max count (inside a bar): {max}
-      </div>
-
-    </div>
-  );
-}
-
-function MiniBox({ box, title, unit }: { box: Box; title:string; unit?:string }) {
-  if (box.min == null) return null;
-
-
-  const W = 360;
-  const OUTER_W = 360;
-  const PADDING_X = 10;
-  //fixing issue where box can go more than box.max
-  const INNER_W = OUTER_W - 2 * PADDING_X;
-  const H = 90;
-
-  //scale for numbers.
-  const scale = (x:number)=> ((x - (box.min as number)) / ((box.max as number)-(box.min as number) || 1)) * INNER_W;
-  const q1 = scale(box.q1 as number), q3 = scale(box.q3 as number), med = scale(box.median as number);
-
-  
-
-  return (
-
-    <div style={{ width: "100%", maxWidth: W, marginTop: 12 }}>
-
-      {/* title */}
-      <div style={{ fontSize: 13, fontWeight: 500, color: "#eef2ff", marginBottom: 4 }}>{title}</div>
+import { MiniHist } from "./components/MiniHist";
+import { MiniBox } from "./components/MiniBox";
 
 
 
-      {/* plot, adding 10 from the left for offset, the variables are not fixed. min and max are always on the edge because our x axis is like that.*/}
-      <div style={{position: "relative",width: "100%",height: H,borderRadius: 12,background: "linear-gradient(135deg, #eff6ff, #f9fafb)",padding: "12px 0px",}}>
-
-        {/* whisker line */}
-        <div style={{position: "absolute",left: PADDING_X,right: PADDING_X,top: H / 2 - 1,height: 2,background: "#c7d2fe",}}/>
-        {/* box */}
-        <div style={{position: "absolute",left: PADDING_X + q1,top: 12,width: Math.max(4, q3 - q1),height: H - 24,borderRadius: 6,background: "rgba(79, 70, 229, 0.18)",border: "1px solid #4f46e5",}}/>
-        {/* median */}
-        <div style={{ position:"absolute", left:PADDING_X+med, top:12, width:3, height:H-22, background:"#1e3a8a", borderRadius:999 }}
-             title={`median: ${format1(box.median)}${unit ? " " + unit : ""}`}/>
-        {/* min/max tickers */}
-        <div title={`min: ${format1(box.min)}${unit ? " " + unit : ""}`} style={{
-          position: "absolute", left: PADDING_X, top: H/2 - 8, width: 2, height: 16, background:"#1e3a8a", borderRadius:999,
-        }}/>
-        <div title={`max: ${format1(box.max)}${unit ? " " + unit : ""}`} style={{
-          position: "absolute", right: PADDING_X, top: H/2 -8, width: 2, height: 16, background:"#1e3a8a", borderRadius:999,
-        }}/>
-      </div>
-
-
-
-      {/* x-axis with labels */}
-      <div style={{ position: "relative", height: 32, marginTop: 6 }}>
-        <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: 1, background: "#e5e7eb" }}/>
-
-
-        <div style={{ position: "absolute", top: 6, left: 0, fontSize: 11, color: "#c6cedbff" }}> 
-          {format1(box.min)}{unit ? ` ${unit}` : ""}
-        </div>
-        <div style={{ position: "absolute", top: 6, left: "50%", transform: "translateX(-50%)", fontSize: 11, color: "#c6cedbff" }}>
-          {format1(box.median)}{unit ? ` ${unit}` : ""}
-        </div>
-        <div style={{ position: "absolute", top: 6, right: 0, fontSize: 11, color: "#c6cedbff" }}>
-          {format1(box.max)}{unit ? ` ${unit}` : ""}
-        </div>
-        <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", fontSize: 11, color: "#c6cedbff" }}>
-          {unit ? `Value (${unit})` : "Value"}
-        </div>
-
-
-      </div>
-    </div>
-  );
-}
 
 //for download
 function triggerDownload(d: DownloadPayload) {
@@ -351,11 +181,7 @@ const unit1 = {
   hbd:  { label: "HBD",  unit: "count" },
   hba:  { label: "HBA",  unit: "count" },
 } as const;
-function format1(num: number | undefined | null, dec = 3) {
-  if (num == null || Number.isNaN(num)) return "-";
 
-  return Number(num).toFixed(dec);
-}
 
 
 
