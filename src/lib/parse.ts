@@ -1,6 +1,7 @@
-type Delim = 'auto' | 'comma' | 'tab' | 'space';
-type Row = { smiles: string; name?: string };
-type ParseOptions = { 
+//CONFIGURABLE OPTIONS
+export type Delim = 'auto' | 'comma' | 'tab' | 'space';
+export type Row = { smiles: string; name?: string };
+export type ParseOptions = { 
   delimiter: Delim; 
   hasHeader: boolean; 
   smilesCol: number; 
@@ -10,11 +11,13 @@ type ParseOptions = {
 };
 
 
-const SMILES_HEADERS = [
+export const SMILES_HEADERS = [
   'smiles','molsmiles','kekule_smiles','canonical_smiles','can_smiles','mol_smiles','kekule_smiles'
 ];
 
-function detectDelimiter(filename?: string, text?: string): Exclude<Delim,'auto'> {
+
+//helper functions
+export function detectDelimiter(filename?: string, text?: string): Exclude<Delim,'auto'> {
   const lower = (filename || '').toLowerCase();
   if (lower.endsWith('.tsv')) return 'tab';
   if (lower.endsWith('.csv')) return 'comma';
@@ -23,19 +26,22 @@ function detectDelimiter(filename?: string, text?: string): Exclude<Delim,'auto'
   if (text && /,/.test(text)) return 'comma';
   return 'space';
 }
-
-function splitByDelim(line: string, d: Exclude<Delim,'auto'>): string[] {
+export function splitByDelim(line: string, d: Exclude<Delim,'auto'>): string[] {
   if (d === 'tab') return line.split('\t');
   if (d === 'comma') return line.split(',');
   // space:collapse multiple spaces/tabs
   return line.trim().split(/\s+/);
 }
-function guessCols(header: string[]) {
+export function guessCols(header: string[]) {
   const lower = header.map(h => h.toLowerCase());
   const smilesIdx = lower.findIndex(h => SMILES_HEADERS.includes(h));
   //put in headers if gets longer
   const nameIdx = lower.findIndex(h => ['name','id','idnumber','compound','title','molecule','mol','cid'].includes(h));
   return { smilesCol: smilesIdx === -1 ? 0 : smilesIdx, nameCol: nameIdx === -1 ? undefined : nameIdx };
+}
+export function formatRowsAsTwoCols(r: Row[], includeHeader = true, sep = '\t'): string {
+  const lines = r.map(x => [x.smiles ?? '', x.name ?? ''].join(sep));
+  return (includeHeader ? `SMILES${sep}Name\n` : '') + lines.join('\n');
 }
 
 export function parseRawToRows(raw: string, filename: string | undefined, o: ParseOptions): { rows: Row[], header?: string[] } {
