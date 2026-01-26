@@ -12,6 +12,7 @@ import { parseRawToRows, detectDelimiter, formatRowsAsTwoCols, splitByDelim, SMI
 
 import { MiniHist } from "./components/MiniHist";
 import { MiniBox } from "./components/MiniBox";
+import { UNITS } from "./constants/units";
 
 
 //help
@@ -84,82 +85,6 @@ function HelpModal({ onClose }: { onClose: () => void }) {
     </div>
   );
 }
-
-
-
-/*
-//parsing for inputting file.
-function parseToSmiles(raw: string, filename?: string): string[] {
-  const t = raw ?? "";
-  if (!t.trim()) return [];
-
-
-  const isCsvExt = filename?.toLocaleLowerCase().endsWith(".csv");
-  const isSmiExt = filename?.toLocaleLowerCase().endsWith(".smi");
-
-
-  const maybeCsv = isCsvExt || (t.includes("\n") && t.includes(","));
-  //CSV (header optional)
-  if (maybeCsv) {
-    const lines = t.split(/\r?\n/).filter(Boolean);
-    if (lines.length === 0) return [];
-
-    const header = lines[0].split(",").map(s => s.trim().toLowerCase());
-    //assumption there is smiles.
-    let idx = header.indexOf("smiles");
-    //idx maybe make changeable later
-    if (idx === -1) idx = 0;
-
-
-    //if has header dont want to skip the top
-    const hasHeader = header.includes("smiles");
-    const dataLines = hasHeader ? lines.slice(1) : lines;
-
-
-    const values = dataLines.map(line => {
-      const cols = line.split(",");
-      return (cols[idx] || "").trim();
-    });
-    return values.filter(Boolean);
-  }
-
-  // SMI or TXT
-  // .smi: "SMILES" NAME" 
-  // .txt fallback to first token per line
-  const lines = t.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-
-  const smiles = lines.filter(l => !l.startsWith("#")).map(l => {
-      //take first token (space/tab separated)
-      const first = l.split(/\s+/)[0];
-      return (first || "").trim();
-    }).filter(Boolean);
-
-  //if user pasted all in one line separated by newl/commas/semicolons/space/tab,split
-  //mainly txt
-  if (smiles.length <= 1 && !isSmiExt) {
-    return t.split(/[\n,; \t]+/).map(s => s.trim()).filter(Boolean);
-  }
-
-  return smiles;
-
-  //newline, comma, semicolo, space, tab
-  //return t.split(/[\n,; \t]+/).map(s => s.trim()).filter(Boolean);
-}*/
-
-//data for hist/box
-const unit1 = {
-  mwt:  { label: "MWT",  unit: "Da" },
-  logp: { label: "LogP", unit: ""   },
-  hbd:  { label: "HBD",  unit: "count" },
-  hba:  { label: "HBA",  unit: "count" },
-} as const;
-
-
-
-
-
-
-
 
 
 
@@ -757,7 +682,7 @@ function App() {
 
         {(["mwt","logp","hbd","hba"] as const).map((k) => {
           const dist = summary.distributions[k];
-          const units = unit1[k];
+          const units = UNITS[k];
           const label = `${units.label}${units.unit ? ` (${units.unit})` : ""}`;
 
 
